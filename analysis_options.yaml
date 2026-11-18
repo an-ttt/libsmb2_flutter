@@ -1,0 +1,20 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - build/**
+    - android/**
+    - ios/**
+    - windows/**
+    - macos/**
+    - linux/**
+
+linter:
+  rules:
+    camel_case_types: false
+    non_constant_identifier_names: false
+    avoid_catches_without_on_clauses: false
+    sort_constructors_first: false
+    prefer_final_fields: true

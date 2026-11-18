@@ -1,0 +1,55 @@
+diff --git a/lib/socket.c b/lib/socket.c
+index d05ea16..8b5a267 100644
+--- a/lib/socket.c
++++ b/lib/socket.c
+@@ -387,7 +387,12 @@ read_more_data:
+                 if (err == WSAEINTR || err == WSAEWOULDBLOCK) {
+ #else
+                 int err = errno;
+-                if (err == EINTR || err == EAGAIN || err == EWOULDBLOCK) {
++                if (
++#ifdef __ANDROID__
++                    err == EINTR ||
++                    err == EBADF || // for Android Emulator
++#endif
++                    err == EAGAIN || err == EWOULDBLOCK) {
+ #endif
+                         return -EAGAIN;
+                 }
+@@ -460,7 +465,12 @@ read_more_data:
+                                         if (err == WSAEINTR || err == WSAEWOULDBLOCK) {
+ #else
+                                         int err = errno;
+-                                        if (err == EINTR || err == EAGAIN || err == EWOULDBLOCK) {
++                                        if (
++#ifdef __ANDROID__
++                                            err == EINTR ||
++                                            err == EBADF || // for Android Emulator
++#endif
++                                            err == EAGAIN || err == EWOULDBLOCK) {
+ #endif
+                                                 count = 0;
+                                         }
+diff --git a/lib/sync.c b/lib/sync.c
+index 08287bd..a0f6286 100644
+--- a/lib/sync.c
++++ b/lib/sync.c
+@@ -73,8 +73,17 @@ static int wait_for_reply(struct smb2_context *smb2,
+                pfd.fd = smb2_get_fd(smb2);
+                pfd.events = smb2_which_events(smb2);
+
++               if (pfd.fd < 0) {
++                       smb2_set_error(smb2, "Invalid file descriptor for poll");
++                       return -1;
++               }
++
+                if (poll(&pfd, 1, 1000) < 0) {
+-                       smb2_set_error(smb2, "Poll failed");
++                       if (errno == EINTR) {
++                               continue;
++                       }
++                       smb2_set_error(smb2, "Poll failed: %s (%d)",
++                                      strerror(errno), errno);
+                        return -1;
+                }
+                 if (smb2->timeout) {
