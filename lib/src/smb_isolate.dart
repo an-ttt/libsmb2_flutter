@@ -816,7 +816,13 @@ SmbResponse _handleConnect(
     final result = using((arena) {
       final serverPtr = message.host!.toCharPointer(allocator: arena);
       final sharePtr = message.share!.toCharPointer(allocator: arena);
-      final userPtr = (message.username ?? '').toCharPointer(allocator: arena);
+      // 🎯 空用户名必须传 nullptr，不能传空字符串：C 层 `if (user)` 对空串指针也成立，
+      // 会执行 smb2_set_user(smb2, "") 覆盖 init 默认的 "Guest"，导致 user[0]=='\0'
+      // 被判为 GUEST 会话并静默忽略已填写的密码。传 nullptr 才能保留默认用户语义。
+      final username = message.username ?? '';
+      final userPtr = username.isNotEmpty
+          ? username.toCharPointer(allocator: arena)
+          : ffi.nullptr;
       return LibSmb2.bindings.smb2_connect_share(ctx, serverPtr, sharePtr, userPtr);
     });
 
